@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Centre de Santé - Enregistrement Vaccination</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bitcoinjs-lib@6.1.0/dist/bitcoinjs.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2em; }
+    label { display: block; margin-top: 1em; }
+    textarea, input { width: 100%; font-family: monospace; font-size: 1em; padding: 0.5em; }
+    input, button { font-size: 1em; padding: 0.5em; margin-top: 0.5em; }
+    #qr { margin-top: 20px; }
+    #reader { width: 300px; margin-top: 20px; }
+    .error { color: red; }
+    #scanToggle { margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Centre de Santé - Enregistrement Vaccination</h1>
+
+  <button id="scanToggle">Démarrer le scan QR patient</button>
+  <div id="reader" style="display:none;"></div>
+
+  <label for="patientData">Ou coller JSON QR patient</label>
+  <textarea id="patientData" placeholder='{"patient_key": "02abc123..."}'></textarea>
+
+  <label for="vaccin">Type de vaccin</label>
+  <input type="text" id="vaccin" placeholder="Covid-19" />
+
+  <label for="date">Date de vaccination</label>
+  <input type="date" id="date" />
+
+  <button id="signBtn">Signer & Générer QR final</button>
+
+  <p id="error" class="error"></p>
+
+  <div id="qr"></div>
+
+<script>
+  // Clé privée fictive du centre (ne jamais exposer en prod !)
+  const centrePrivKeyHex = "1e99423a4ed27608a15a2616b7f7f9f616748f6e3a122a38898c30b23bda8a8b";
+  const bitcoin = window.bitcoinjs;
+  const ECPair = bitcoin.ECPair;
+
+  const privKeyBuffer = Buffer.from(centrePrivKeyHex, "hex");
+  const keyPair = ECPair.fromPrivateKey(privKeyBuffer);
+
+  function hashMessage(message) {
+    const hash = bitcoin.crypto.sha256(Buffer.from(message));
+    return hash;
+  }
+
+  function signData(dataObj) {
+    const message = JSON.stringify(dataObj);
+    const hash = hashMessage(message);
+    const signature = keyPair.sign(hash);
+    return signature.toDER('hex');
+  }
+
+  function generateQRCode(data) {
+    document.getElementById("qr").innerHTML = "";
+    QRCode.toCanvas(document.getElementById("qr"), JSON.stringify(data), { width: 250 }, function(err) {
+      if (err) console.error(err);
+    });
+  }
+
+  const scanToggleBtn = document.getElementById("scanToggle");
+  const readerDiv = document.getElementById("reader");
+  let html5QrcodeScanner = null;
+  let scanning = false;
+
+  scanToggleBtn.addEventListener("click", () => {
+    if (!scanning) {
+      readerDiv.style.display = "block";
+      html5QrcodeScanner = new Html5Qrcode("reader");
+      html5QrcodeScanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        qrCodeMessage => {
+          // QR détecté, on arrête le scan et on remplit la textarea
+          html5QrcodeScanner.stop().then(() => {
+            scanning = false;
+            scanToggleBtn.innerText = "Démarrer le scan QR patient";
+            readerDiv.style.display = "none";
+
+            try {
+              // Si c'est du JSON valide, on remplit la zone
+              const obj = JSON.parse(qrCodeMessage);
+              if (obj.patient_key) {
+                document.getElementById("patientData").value = qrCodeMessage;
+                document.getElementById("error").innerText = "";
+              } else {
+                document.getElementById("error").innerText = "QR scanné invalide (pas de patient_key).";
+              }
+            } catch {
+              document.getElementById("error").innerText = "QR scanné n'est pas un JSON valide.";
+            }
+          });
+        },
+        errorMessage => {
+          // console.log(`Scan error: ${errorMessage}`);
+        }
+      ).catch(err => {
+        console.error("Impossible de démarrer le scan", err);
+        document.getElementById("error").innerText = "Impossible d'accéder à la caméra ou démarrer le scan.";
+      });
+      scanning = true;
+      scanToggleBtn.innerText = "Arrêter le scan";
+    } else {
+      html5QrcodeScanner.stop().then(() => {
+        scanning = false;
+        scanToggleBtn.innerText = "Démarrer le scan QR patient";
+        readerDiv.style.display = "none";
+      });
+    }
+  });
+
+  document.getElementById("signBtn").addEventListener("click", () => {
+    document.getElementById("error").innerText = "";
+
+    let patientDataRaw = document.getElementById("patientData").value.trim();
+    if (!patientDataRaw) {
+      document.getElementById("error").innerText = "Veuillez coller ou scanner les données patient JSON.";
+      return;
+    }
+
+    let patientData;
+    try {
+      patientData = JSON.parse(patientDataRaw);
+    } catch (e) {
+      document.getElementById("error").innerText = "JSON invalide.";
+      return;
+    }
+
+    if (!patientData.patient_key) {
+      document.getElementById("error").innerText = "Clé patient manquante dans les données.";
+      return;
+    }
+
+    const vaccin = document.getElementById("vaccin").value.trim();
+    const date = document.getElementById("date").value;
+    if (!vaccin || !date) {
+      document.getElementById("error").innerText = "Veuillez remplir vaccin et date.";
+      return;
+    }
+
+    const dataToSign = {
+      patient_key: patientData.patient_key,
+      vaccin,
+      date
+    };
+
+    const signature = signData(dataToSign);
+    const centrePubKey = keyPair.publicKey.toString('hex');
+
+    const finalData = {
+      ...dataToSign,
+      centre_signature: signature,
+      centre_key: centrePubKey
+    };
+
+    generateQRCode(finalData);
+  });
+</script>
+</body>
+</html>
