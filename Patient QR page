@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Mon Carnet de Vaccination</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 2em; }
+    #qr { margin-top: 20px; }
+    #loader {
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid #3498db;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+      display: none;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .notification {
+      margin-top: 15px;
+      color: green;
+      font-weight: bold;
+    }
+    .error {
+      color: red;
+    }
+    #reader { width: 300px; margin: 20px auto; display: none; }
+  </style>
+</head>
+<body>
+  <h1>Mon Carnet de Vaccination</h1>
+  <p id="status">Chargement...</p>
+  <div id="loader"></div>
+  <div id="qr"></div>
+  <button onclick="fetchVaccinData()">🔄 Rafraîchir</button>
+  <button onclick="toggleScan()">📷 Scanner une preuve de vaccination</button>
+  <div id="reader"></div>
+  <div id="notification" class="notification"></div>
+
+  <script>
+    const apiUrl = "https://votre-backend.com/api/vaccin/carnet"; // À adapter
+    let notificationBox = document.getElementById("notification");
+    const readerDiv = document.getElementById("reader");
+    let scanner = null;
+    let patientKey = localStorage.getItem("patient_key");
+
+    if (!patientKey) {
+      patientKey = "02abc123DEMO" + Math.floor(Math.random() * 100000);
+      localStorage.setItem("patient_key", patientKey);
+    }
+
+    async function fetchVaccinData() {
+      const loader = document.getElementById("loader");
+      const status = document.getElementById("status");
+      notificationBox.innerText = "";
+      status.innerText = "Chargement...";
+      loader.style.display = "block";
+      document.getElementById("qr").innerHTML = "";
+
+      try {
+        const res = await fetch(`${apiUrl}?patient_key=${encodeURIComponent(patientKey)}`);
+        if (!res.ok) throw new Error("Erreur réseau");
+        const data = await res.json();
+
+        let qrPayload;
+        if (data && data.centre_signature) {
+          status.innerText = "Vaccination trouvée ✅";
+          notificationBox.innerText = "Votre carnet a été mis à jour.";
+          qrPayload = data;
+        } else {
+          status.innerText = "Aucune preuve de vaccination pour l'instant...";
+          notificationBox.innerText = "QR code initial en attente de mise à jour.";
+          qrPayload = { patient_key: patientKey };
+        }
+
+        generateQRCode(JSON.stringify(qrPayload));
+      } catch (err) {
+        status.innerText = "Erreur de chargement";
+        notificationBox.innerText = "Impossible de contacter le serveur.";
+        notificationBox.classList.add("error");
+        console.error(err);
+      } finally {
+        loader.style.display = "none";
+      }
+    }
+
+    function generateQRCode(data) {
+      QRCode.toCanvas(document.getElementById("qr"), data, { width: 250 }, function (error) {
+        if (error) console.error(error);
+      });
+    }
+
+    function toggleScan() {
+      if (scanner) {
+        scanner.stop().then(() => {
+          readerDiv.style.display = "none";
+          scanner = null;
+        });
+      } else {
+        scanner = new Html5Qrcode("reader");
+        readerDiv.style.display = "block";
+        scanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: 250 },
+          decoded => {
+            try {
+              const obj = JSON.parse(decoded);
+              if (obj.centre_signature && obj.patient_key) {
+                // Mise à jour automatique
+                notificationBox.innerText = "✅ Preuve scannée. Mise à jour du carnet.";
+                generateQRCode(JSON.stringify(obj));
+                scanner.stop();
+                readerDiv.style.display = "none";
+                scanner = null;
+              } else {
+                notificationBox.innerText = "❌ QR non reconnu comme une preuve valide.";
+              }
+            } catch (e) {
+              notificationBox.innerText = "❌ Format QR invalide.";
+            }
+          },
+          error => {
+            // console.warn("Scan error:", error);
+          }
+        ).catch(err => {
+          console.error("Erreur accès caméra:", err);
+          notificationBox.innerText = "Impossible d'accéder à la caméra.";
+        });
+      }
+    }
+
+    fetchVaccinData();
+  </script>
+</body>
+</html>
