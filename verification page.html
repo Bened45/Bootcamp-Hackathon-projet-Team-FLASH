@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Vérificateur de Vaccination</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.jsdelivr.net/npm/bitcoinjs-lib@6.1.0/dist/bitcoinjs.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 1em; text-align: center; max-width: 500px; margin: auto; }
+    #reader { width: 100%; max-width: 400px; margin: 20px auto; }
+    .result { margin-top: 20px; font-weight: bold; font-size: 1.2em; }
+    .valid { color: green; }
+    .invalid { color: red; }
+    button { margin-top: 10px; padding: 10px 20px; font-size: 1em; }
+    ul { text-align: left; margin-top: 20px; }
+    textarea { width: 100%; height: 100px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Vérification de Carnet de Vaccination</h1>
+  <div id="reader"></div>
+  <button onclick="stopScan()">Arrêter le scan</button>
+  <div id="result" class="result"></div>
+
+  <div>
+    <h2>Historique local</h2>
+    <ul id="history"></ul>
+    <button onclick="exportPDF()">📄 Exporter en PDF</button>
+    <button onclick="exportJSON()">💾 Exporter JSON</button>
+    <button onclick="clearHistory()">🗑️ Effacer l'historique</button>
+  </div>
+
+  <div>
+    <h2>Entrer manuellement un QR</h2>
+    <textarea id="manualInput" placeholder='Coller ici les données JSON du QR code'></textarea>
+    <button onclick="manualVerify()">Vérifier manuellement</button>
+  </div>
+
+  <script>
+    const bitcoin = window.bitcoinjs;
+
+    function hashMessage(message) {
+      return bitcoin.crypto.sha256(Buffer.from(message));
+    }
+
+    function verifySignature(data, signatureHex, pubKeyHex) {
+      try {
+        const message = JSON.stringify({
+          patient_key: data.patient_key,
+          vaccin: data.vaccin,
+          date: data.date
+        });
+
+        const hash = hashMessage(message);
+        const signature = bitcoin.ECSignature.fromDER(Buffer.from(signatureHex, 'hex'));
+        const pubKeyBuffer = Buffer.from(pubKeyHex, 'hex');
+        const keyPair = bitcoin.ECPair.fromPublicKey(pubKeyBuffer);
+
+        return keyPair.verify(hash, signature);
+      } catch (e) {
+        console.error("Erreur de vérification:", e);
+        return false;
+      }
+    }
+
+    const resultBox = document.getElementById("result");
+    const historyList = document.getElementById("history");
+    let historyEntries = JSON.parse(localStorage.getItem("vaccinHistory") || "[]");
+
+    function updateHistoryUI() {
+      historyList.innerHTML = "";
+      historyEntries.slice().reverse().forEach(entry => {
+        const li = document.createElement("li");
+        li.textContent = entry.text;
+        li.style.color = entry.valid ? "green" : "red";
+        historyList.appendChild(li);
+      });
+    }
+
+    function addToHistory(text, valid) {
+      const entry = { text, valid };
+      historyEntries.push(entry);
+      localStorage.setItem("vaccinHistory", JSON.stringify(historyEntries));
+      updateHistoryUI();
+    }
+
+    function exportPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.setFontSize(12);
+      historyEntries.forEach((entry, index) => {
+        doc.text(entry.text, 10, 10 + (index * 10));
+      });
+      doc.save("historique_vaccination.pdf");
+    }
+
+    function exportJSON() {
+      const dataStr = JSON.stringify(historyEntries, null, 2);
+      const blob = new Blob([dataStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "historique_vaccination.json";
+      a.click();
+    }
+
+    function clearHistory() {
+      if (confirm("Êtes-vous sûr de vouloir effacer l'historique ?")) {
+        historyEntries = [];
+        localStorage.removeItem("vaccinHistory");
+        updateHistoryUI();
+      }
+    }
+
+    function manualVerify() {
+      const input = document.getElementById("manualInput").value;
+      try {
+        const obj = JSON.parse(input);
+        if (obj.patient_key && obj.vaccin && obj.date && obj.centre_signature && obj.centre_key) {
+          const valid = verifySignature(obj, obj.centre_signature, obj.centre_key);
+          const msg = valid
+            ? `Vaccination valide pour ${obj.vaccin} le ${obj.date}`
+            : `Signature non valide pour ${obj.vaccin}`;
+          resultBox.innerText = (valid ? "✅ " : "❌ ") + msg;
+          resultBox.className = valid ? "result valid" : "result invalid";
+          addToHistory(msg, valid);
+        } else {
+          const msg = "Données incomplètes.";
+          resultBox.innerText = `❌ ${msg}`;
+          resultBox.className = "result invalid";
+          addToHistory(msg, false);
+        }
+      } catch (e) {
+        const msg = "Format JSON invalide.";
+        resultBox.innerText = `❌ ${msg}`;
+        resultBox.className = "result invalid";
+        addToHistory(msg, false);
+      }
+    }
+
+    updateHistoryUI();
+
+    let scanner = new Html5Qrcode("reader");
+
+    scanner.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 250 },
+      decoded => {
+        try {
+          const obj = JSON.parse(decoded);
+          if (obj.patient_key && obj.vaccin && obj.date && obj.centre_signature && obj.centre_key) {
+            const valid = verifySignature(obj, obj.centre_signature, obj.centre_key);
+            const msg = valid
+              ? `Vaccination valide pour ${obj.vaccin} le ${obj.date}`
+              : `Signature non valide pour ${obj.vaccin}`;
+            resultBox.innerText = (valid ? "✅ " : "❌ ") + msg;
+            resultBox.className = valid ? "result valid" : "result invalid";
+            addToHistory(msg, valid);
+          } else {
+            const msg = "Données QR incomplètes.";
+            resultBox.innerText = `❌ ${msg}`;
+            resultBox.className = "result invalid";
+            addToHistory(msg, false);
+          }
+        } catch (e) {
+          const msg = "QR invalide.";
+          resultBox.innerText = `❌ ${msg}`;
+          resultBox.className = "result invalid";
+          addToHistory(msg, false);
+        }
+      },
+      error => {
+        // Silencieux
+      }
+    ).catch(err => {
+      console.error("Erreur caméra:", err);
+      resultBox.innerText = "Impossible de démarrer la caméra.";
+    });
+
+    function stopScan() {
+      if (scanner) {
+        scanner.stop().then(() => {
+          document.getElementById("reader").innerHTML = "Scan arrêté.";
+        });
+      }
+    }
+  </script>
+</body>
+</html>
