@@ -13,19 +13,19 @@ Permettre à chaque patient de présenter une **preuve infalsifiable de vaccinat
 
  Architecture du Prototype
 
- 1. 🧕‍♂️ Interface Patient (`mon-carnet.html` à venir)
+ 1.  Interface Patient (`mon-carnet.html` à venir)
 
 * Affiche un **QR code personnel**
 * Données stockées en local (dans le navigateur)
 * QR mis à jour après vaccination par le centre de santé (via scan)
 * Animation de chargement + bouton de rafraîchissement
 
- 2. 🕵️ Interface Vérificateur (`verificateur.html`)
+ 2.  Interface Vérificateur (`verificateur.html`)
 
 * Scan automatique de QR via webcam
 * Vérification cryptographique via `bitcoinjs-lib`
 * Support d’entrée manuelle JSON (en cas de problème de scan)
-* Historique local (avec couleurs ✅/❌)
+* Historique local (avec couleurs)
 * Export en **PDF** ou **JSON**
 * Sauvegarde automatique + effacement possible
 
