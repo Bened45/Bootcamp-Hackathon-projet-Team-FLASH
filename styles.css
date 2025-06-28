@@ -1,0 +1,121 @@
+/* Fichier global style.css */
+
+:root {
+  --primary: #3498db;
+  --success: #2ecc71;
+  --danger: #e74c3c;
+  --warning: #f39c12;
+  --background: #f5f7fa;
+  --text: #2c3e50;
+  --light: #ecf0f1;
+  --font: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+  font-family: var(--font);
+  background-color: var(--background);
+  color: var(--text);
+  padding: 2em;
+  margin: 0 auto;
+  text-align: center;
+  max-width: 600px;
+}
+
+h1, h2 {
+  color: var(--text);
+  margin-bottom: 1em;
+}
+
+button {
+  padding: 10px 20px;
+  margin: 5px;
+  border: none;
+  border-radius: 5px;
+  font-size: 1em;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+.btn-primary { background-color: var(--primary); color: white; }
+.btn-success { background-color: var(--success); color: white; }
+.btn-danger { background-color: var(--danger); color: white; }
+.btn-warning { background-color: var(--warning); color: white; }
+
+.card {
+  background-color: var(--light);
+  padding: 1em;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  margin: 1em 0;
+  text-align: left;
+}
+
+.result {
+  padding: 10px;
+  border-radius: 5px;
+  margin-top: 1em;
+  font-weight: bold;
+}
+
+.result.valid {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.result.invalid {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+textarea {
+  width: 100%;
+  padding: 1em;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  resize: vertical;
+}
+
+ul {
+  text-align: left;
+  padding: 0;
+  margin-top: 1em;
+}
+
+ul li {
+  list-style: none;
+  padding: 10px;
+  margin-bottom: 5px;
+  border-radius: 5px;
+  background-color: var(--light);
+}
+
+ul li.valid {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+ul li.invalid {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+#reader {
+  border: 2px dashed var(--primary);
+  padding: 10px;
+  border-radius: 10px;
+  background-color: white;
+  margin: 1em auto;
+  width: 100%;
+  max-width: 400px;
+}
