@@ -44,8 +44,8 @@
   <p id="status">Chargement...</p>
   <div id="loader"></div>
   <div id="qr"></div>
-  <button onclick="fetchVaccinData()">🔄 Rafraîchir</button>
-  <button onclick="toggleScan()">📷 Scanner une preuve de vaccination</button>
+  <button onclick="fetchVaccinData()"> Rafraîchir</button>
+  <button onclick="toggleScan()"> Scanner une preuve de vaccination</button>
   <div id="reader"></div>
   <div id="notification" class="notification"></div>
 
@@ -76,7 +76,7 @@
 
         let qrPayload;
         if (data && data.centre_signature) {
-          status.innerText = "Vaccination trouvée ✅";
+          status.innerText = "Vaccination trouvée";
           notificationBox.innerText = "Votre carnet a été mis à jour.";
           qrPayload = data;
         } else {
@@ -119,16 +119,16 @@
               const obj = JSON.parse(decoded);
               if (obj.centre_signature && obj.patient_key) {
                 // Mise à jour automatique
-                notificationBox.innerText = "✅ Preuve scannée. Mise à jour du carnet.";
+                notificationBox.innerText = " Preuve scannée. Mise à jour du carnet.";
                 generateQRCode(JSON.stringify(obj));
                 scanner.stop();
                 readerDiv.style.display = "none";
                 scanner = null;
               } else {
-                notificationBox.innerText = "❌ QR non reconnu comme une preuve valide.";
+                notificationBox.innerText = " QR non reconnu comme une preuve valide.";
               }
             } catch (e) {
-              notificationBox.innerText = "❌ Format QR invalide.";
+              notificationBox.innerText = " Format QR invalide.";
             }
           },
           error => {
