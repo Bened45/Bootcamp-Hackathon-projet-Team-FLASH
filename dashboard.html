@@ -1,0 +1,62 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tableau de bord</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+   Tableau de bord
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2>Liste des patients</h2>
+      <div id="patientList">Chargement...</div>
+    </div>
+  </div>
+
+  <nav>
+    <button onclick="location.href='add-patient.html'"> Ajouter</button>
+    <button onclick="location.href='verify.html'">Vérifier</button>
+  </nav>
+
+  <script>
+    async function chargerPatients() {
+      try {
+        const res = await fetch('/api/patients');
+        const patients = await res.json();
+
+        const liste = document.getElementById('patientList');
+        liste.innerHTML = '';
+
+        if (patients.length === 0) {
+          liste.innerHTML = '<p>Aucun patient pour le moment.</p>';
+          return;
+        }
+
+        patients.forEach(p => {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.innerHTML = `
+            <h3>${p.nom}</h3>
+            <p>Date de naissance : ${p.date_naissance}</p>
+            <p>Genre : ${p.genre}</p>
+            <button onclick="location.href='patient-detail.html?id=${p.id}'">Voir</button>
+          `;
+          liste.appendChild(card);
+        });
+      } catch (err) {
+        console.error('Erreur chargement patients :', err);
+        document.getElementById('patientList').innerHTML = '<p style="color:red">Erreur de chargement.</p>';
+      }
+    }
+
+    window.onload = () => chargerPatients();
+  </script>
+</body>
+</html>
+

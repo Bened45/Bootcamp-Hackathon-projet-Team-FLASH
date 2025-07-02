@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Connexion Hôpital</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <main style="padding: 1rem; max-width: 400px; margin: auto; margin-top: 4rem;">
+    <h1 style="color: var(--primary); font-size: 1.8rem; text-align: center; margin-bottom: 2rem;">
+      Connexion Hôpital
+    </h1>
+    <form id="loginForm" class="card">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required class="form-input" />
+
+      <label for="password">Mot de passe</label>
+      <input type="password" id="password" name="password" required class="form-input" />
+
+      <button type="submit" class="btn">Se connecter</button>
+    </form>
+  </main>
+
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      const email = this.email.value.trim();
+      const password = this.password.value;
+
+      try {
+        const response = await fetch('https://ton-backend/api/auth/hospital', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.token) {
+          // Stocker le token et rôle dans localStorage
+          localStorage.setItem('token', result.token);
+          localStorage.setItem('role', 'hospital');
+
+          // Rediriger vers dashboard
+          window.location.href = 'dashboard.html';
+        } else {
+          alert('Erreur : ' + (result.message || 'Identifiants invalides'));
+        }
+      } catch (err) {
+        alert('Erreur réseau, réessayez plus tard.');
+      }
+    });
+  </script>
+</body>
+</html>

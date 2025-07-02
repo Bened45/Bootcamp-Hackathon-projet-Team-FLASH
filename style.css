@@ -1,0 +1,79 @@
+:root {
+  --primary: #007bff;
+  --primary-dark: #0056b3;
+  --background: #f5f8fa;
+  --text: #222;
+  --card-bg: #fff;
+  --border: #ddd;
+  --radius: 10px;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background-color: var(--background);
+  color: var(--text);
+}
+
+main {
+  max-width: 500px;
+  margin: auto;
+  padding: 1.5rem;
+}
+
+h1, h2 {
+  text-align: center;
+  color: var(--primary);
+}
+
+form, .card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  padding: 1rem;
+  border-radius: var(--radius);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+input, select {
+  width: 100%;
+  padding: 0.75rem;
+  margin-top: 0.25rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 1rem;
+}
+
+button, .btn {
+  background-color: var(--primary);
+  color: white;
+  padding: 0.75rem;
+  font-size: 1rem;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+  width: 100%;
+}
+
+button:hover, .btn:hover {
+  background-color: var(--primary-dark);
+}
+
+.navbar {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  background: var(--card-bg);
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-around;
+  padding: 0.75rem 0;
+  box-shadow: 0 -2px 5px rgba(0,0,0,0.05);
+}
+
+.navbar a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: bold;
+}

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vérification certificat vaccinal</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 1rem;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to bottom right, #e0f7fa, #e1bee7);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 1rem;
+    }
+
+    #video {
+      width: 100%;
+      max-width: 400px;
+      border-radius: 16px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      display: none;
+    }
+
+    textarea {
+      width: 100%;
+      max-width: 400px;
+      height: 120px;
+      border-radius: 12px;
+      border: none;
+      padding: 1rem;
+      margin-top: 1rem;
+      font-size: 1rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    button {
+      background: linear-gradient(to right, #42a5f5, #7e57c2);
+      color: white;
+      border: none;
+      border-radius: 999px;
+      padding: 0.75rem 1.5rem;
+      margin-top: 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+    }
+
+    button:hover {
+      transform: scale(1.05);
+    }
+
+    #result {
+      margin-top: 1.5rem;
+      padding: 1rem 1.5rem;
+      border-radius: 16px;
+      max-width: 400px;
+      text-align: left;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+
+    #result.valid {
+      background: linear-gradient(to right, #a5d6a7, #66bb6a);
+      color: #1b5e20;
+    }
+
+    #result.invalid {
+      background: linear-gradient(to right, #ef9a9a, #e53935);
+      color: white;
+    }
+
+    ul {
+      padding-left: 1.2rem;
+    }
+
+    #scanAnotherBtn {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<h1> Vérifier un certificat vaccinal</h1>
+
+<video id="video" autoplay muted></video>
+
+<textarea id="qrTextInput" placeholder=" Ou collez ici le contenu d’un QR code..."></textarea>
+<button onclick="verifierCertificat(document.getElementById('qrTextInput').value)">Vérifier manuellement</button>
+
+<div id="result"></div>
+<button id="scanAnotherBtn" onclick="restartScanner()"> Scanner un autre certificat</button>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/elliptic/dist/elliptic.min.js"></script>
+
+<script>
+  const video = document.getElementById('video');
+  const resultDiv = document.getElementById('result');
+  const scanAnotherBtn = document.getElementById('scanAnotherBtn');
+
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
+  let videoStream;
+  let scanning = false;
+
+  const pubKeyHex = '0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798'; // À remplacer
+
+  const EC = elliptic.ec;
+  const ec = new EC('secp256k1');
+
+  function startCamera() {
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+      .then(function(stream) {
+        videoStream = stream;
+        video.srcObject = stream;
+        video.style.display = 'block';
+        scanning = true;
+        scanFrame();
+      })
+      .catch(err => {
+        alert('Erreur accès caméra : ' + err.message);
+      });
+  }
+
+  function stopCamera() {
+    scanning = false;
+    if (videoStream) {
+      videoStream.getTracks().forEach(track => track.stop());
+      video.srcObject = null;
+    }
+    video.style.display = 'none';
+  }
+
+  function scanFrame() {
+    if (!scanning) return;
+
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      canvas.height = video.videoHeight;
+      canvas.width = video.videoWidth;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, canvas.width, canvas.height);
+      if (code) {
+        scanning = false;
+        stopCamera();
+        verifierCertificat(code.data);
+        return;
+      }
+    }
+    requestAnimationFrame(scanFrame);
+  }
+
+  function restartScanner() {
+    resultDiv.innerHTML = '';
+    scanAnotherBtn.style.display = 'none';
+    startCamera();
+  }
+
+  function verifierCertificat(data) {
+    let obj;
+    try {
+      obj = JSON.parse(data);
+    } catch {
+      afficherResult(false, "QR invalide ou mal formaté.");
+      return;
+    }
+
+    if (!obj.vaccine || !obj.signature) {
+      afficherResult(false, "Données incomplètes dans le QR.");
+      return;
+    }
+
+    const message = JSON.stringify(obj.vaccine);
+    const signatureHex = obj.signature;
+
+    try {
+      const key = ec.keyFromPublic(pubKeyHex, 'hex');
+      const valid = key.verify(message, signatureHex);
+      if (valid) {
+        afficherResult(true, " Certificat authentique", obj.vaccine);
+      } else {
+        afficherResult(false, " Signature invalide !");
+      }
+    } catch (e) {
+      afficherResult(false, "Erreur de vérification : " + e.message);
+    }
+  }
+
+  function afficherResult(valide, message, data = null) {
+    resultDiv.className = valide ? "valid" : "invalid";
+    let html = `<p>${message}</p>`;
+    if (valide && data) {
+      html += `<ul>
+        <li><strong>Vaccin :</strong> ${data.vaccineName}</li>
+        <li><strong>Date :</strong> ${data.date}</li>
+        <li><strong>Fabricant :</strong> ${data.manufacturer || '-'}</li>
+        <li><strong>Lot :</strong> ${data.batchNumber || '-'}</li>
+        <li><strong>ID Patient :</strong> ${data.patientId || '-'}</li>
+      </ul>`;
+    }
+    resultDiv.innerHTML = html;
+    scanAnotherBtn.style.display = 'inline-block';
+  }
+
+  // Démarrage automatique à l’ouverture
+  window.onload = () => startCamera();
+</script>
+
+</body>
+</html>

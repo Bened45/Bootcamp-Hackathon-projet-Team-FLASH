@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ajouter un vaccin</title>
+  <link rel="stylesheet" href="css/style.css" />
+
+</head>
+
+<body>
+  <main style="padding: 1rem; padding-bottom: 5rem;">
+    <h1 style=" font-size: 1.5rem;">Ajouter un vaccin</h1>
+
+    <form id="vaccineForm" class="card">
+      <label for="vaccin">Nom du vaccin</label>
+      <input type="text" name="vaccin" required class="form-input" />
+
+      <label>Date d’administration</label>
+      <input type="date" name="date" required class="form-input" />
+
+      <label>NPI</label>
+      <input type="text" name="npi" id="npi" required class="form-input" />
+
+      <label for="centre">Centre de vaccination</label>
+      <input type="text" name="centre" id="centre" required class="form-input" />
+
+      <label for="expiredate">Date d'expiration</label>
+      <input type="date" name="expiredate" id="expiredate" required class="form-input" />
+
+      <label>Numéro de lot</label>
+      <input type="text" name="batchNumber" required class="form-input" />
+
+      <button type="submit" class="btn">Enregistrer et signer</button>
+    </form>
+
+    <!-- Zone où le QR sera affiché -->
+    <div id="qrSection" class="card" style="display:none;">
+      <h2>Certificat signé</h2>
+      <canvas id="qrCode" style="margin: 1rem auto;"></canvas>
+      <p id="signature" style="font-size: 0.8rem; word-break: break-word;"></p>
+      <button class="btn" onclick="window.print()">Imprimer</button>
+    </div>
+  </main>
+
+  <nav class="navbar">
+    <a href="dashboard.html">Accueil</a>
+    <a href="add-vaccine.html" class="active">Ajouter</a>
+    
+  </nav>
+
+  <!-- QRCode CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <script src="add-vaccine.js"></script>
+  <!-- JS -->
+  </body>
+</html>/

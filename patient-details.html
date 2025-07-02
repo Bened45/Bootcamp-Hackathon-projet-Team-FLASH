@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Détails patient</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <main style="padding: 1rem; padding-bottom: 10rem;">
+    <h1 class="text-xl text-blue-700 font-bold mb-3">Dossier patient</h1>
+
+    <div class="card" id="patient-info">
+      <p><strong>Nom :</strong> <span id="patientName">Chargement...</span></p>
+      <p><strong>Date de naissance :</strong> <span id="dob">-</span></p>
+      <p><strong>ID :</strong> <span id="patientId">-</span></p>
+    </div>
+
+    <h2 class="text-lg font-semibold text-blue-600 mb-2">Historique vaccinal</h2>
+    <div id="vaccine-history"></div>
+
+    <a href="add-vaccine.html" id="addLink" class="btn">Ajouter un vaccin</a>
+  </main>
+
+  <nav class="navbar">
+    <a href="dashboard.html">Accueil</a>
+    <a href="add-vaccine.html">Ajouter</a>
+    <a href="verify.html">Vérifier</a>
+  </nav>
+
+  <script>
+    // Récupère l’ID du patient via l’URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const patientId = urlParams.get('id');
+
+    // Exemple d'appel au backend
+    async function chargerPatient() {
+      try {
+        const res = await fetch(`https://ton-backend/api/patients/${patientId}`);
+        const patient = await res.json();
+
+        document.getElementById('patientName').textContent = patient.name;
+        document.getElementById('dob').textContent = patient.dob;
+        document.getElementById('patientId').textContent = patient.id;
+        document.getElementById('addLink').href = `add-vaccine.html?patientId=${patient.id}`;
+
+        chargerVaccins(patient.id);
+      } catch (err) {
+        alert("Erreur lors du chargement du patient.");
+      }
+    }
+
+    async function chargerVaccins(patientId) {
+      try {
+        const res = await fetch(`http://127.0.0.1:8000/vaccines`);
+        const vaccins = await res.json();
+
+        const container = document.getElementById('vaccine-history');
+        if (vaccins.length === 0) {
+          container.innerHTML = "<p>Aucun vaccin enregistré.</p>";
+          return;
+        }
+
+        vaccins.forEach(v => {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.innerHTML = `
+            <p><strong>Vaccin :</strong> ${v.name}</p>
+            <p><strong>Date :</strong> ${v.date}</p>
+            <p><strong>Fabricant :</strong> ${v.manufacturer}</p>
+            <p><strong>Lot :</strong> ${v.batchNumber}</p>
+          `;
+          container.appendChild(card);
+        });
+      } catch (err) {
+        document.getElementById('vaccine-history').innerHTML = "<p>Erreur lors du chargement des vaccins.</p>";
+      }
+    }
+
+    chargerPatient();
+  </script>
+</body>
+</html>
